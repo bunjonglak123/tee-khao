@@ -1,0 +1,20 @@
+# secrets — NEVER commit (includes .env.example by owner's rule)
+.env
+.env.*
+*.env
+.envexample
+.env.example
+
+# vercel
+.vercel/
+
+# deps / build
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+
+# os
+.DS_Store
+Thumbs.db

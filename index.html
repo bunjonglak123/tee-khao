@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ตี้ข้าว</title>
+<meta name="description" content="ตั้งตี้กินข้าวกับเพื่อน จดเมนู สแกนใบเสร็จ แล้วหารบิลพร้อม QR พร้อมเพย์">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%9A%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&family=Mitr:wght@500;600&display=swap">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><h1>ตี้ข้าว</h1><span>ตั้งตี้กินข้าว แล้วหารบิลในที่เดียว</span></div>
+  <span class="net" id="net" hidden>เชื่อมต่อไม่ได้ กำลังลองใหม่…</span>
+</header>
+
+<div class="layout">
+  <aside id="listPane">
+    <div class="pane-head">
+      <h2>ตี้ทั้งหมด</h2>
+      <button class="btn primary small needs-write" id="newBtn" type="button">+ ตั้งตี้ใหม่</button>
+    </div>
+    <form class="card needs-write" id="createForm" hidden>
+      <div class="fields">
+        <label class="field"><span>ชื่อตี้</span><input id="cTitle" required maxlength="60" placeholder="หมูกระทะวันศุกร์"></label>
+        <label class="field"><span>ร้าน / ที่นัด</span><input id="cPlace" maxlength="80" placeholder="ร้านแถวสามย่าน"></label>
+        <div class="row2">
+          <label class="field"><span>วันเวลา</span><input id="cWhen" type="datetime-local" required></label>
+          <label class="field"><span>รับกี่คน</span><input id="cMax" type="number" min="2" max="50" placeholder="ไม่จำกัด"></label>
+        </div>
+        <label class="field"><span>ชื่อเล่นของคุณ</span><input id="cNick" required maxlength="30" placeholder="ชื่อที่เพื่อนเรียก"></label>
+        <div class="actions">
+          <button class="btn" type="button" id="cCancel">ยกเลิก</button>
+          <button class="btn primary" type="submit">ตั้งตี้</button>
+        </div>
+      </div>
+    </form>
+    <ul class="party-list" id="partyList"></ul>
+    <p class="list-empty" id="listEmpty">กำลังโหลด…</p>
+  </aside>
+
+  <main id="detailPane">
+    <div class="card welcome" id="welcome">
+      <h2>ยังไม่ได้เลือกตี้</h2>
+      <p>เลือกตี้จากรายการ หรือกด “ตั้งตี้ใหม่” แล้วส่งลิงก์หน้านี้ให้เพื่อน</p>
+      <ol>
+        <li>ตั้งตี้ บอกร้าน วันเวลา และจำนวนคน</li>
+        <li>เพื่อนกดเข้าร่วม หรือเพิ่มชื่อเพื่อนเอง</li>
+        <li>จดเมนูที่สั่ง เลือกว่าใครกินจานไหน</li>
+        <li>ดูยอดที่แต่ละคนต้องโอน พร้อมเซอร์วิสชาร์จและ VAT</li>
+      </ol>
+    </div>
+
+    <div id="detail" hidden style="display:grid;gap:22px">
+      <div class="head">
+        <button class="back" type="button" id="backBtn">← ตี้ทั้งหมด</button>
+        <div class="meta"><span class="chip" id="statusChip"></span></div>
+        <h1 id="pTitle"></h1>
+        <div class="meta" id="pMeta"></div>
+        <p class="note" id="pNote" hidden></p>
+        <details class="edit needs-write">
+          <summary>แก้ไขรายละเอียดตี้</summary>
+          <div class="card fields">
+            <label class="field"><span>ชื่อตี้</span><input id="eTitle" maxlength="60"></label>
+            <label class="field"><span>ร้าน / ที่นัด</span><input id="ePlace" maxlength="80"></label>
+            <div class="row2">
+              <label class="field"><span>วันเวลา</span><input id="eWhen" type="datetime-local"></label>
+              <label class="field"><span>รับกี่คน</span><input id="eMax" type="number" min="2" max="50" placeholder="ไม่จำกัด"></label>
+            </div>
+            <label class="field"><span>โน้ต (เช่น ใครจองโต๊ะ, แต่งตัวแบบไหน)</span><input id="eNote" maxlength="200"></label>
+          </div>
+        </details>
+      </div>
+
+      <section class="block">
+        <div class="block-head"><h2>ใครไปบ้าง</h2><span class="sub num" id="countLbl"></span></div>
+        <ul class="members" id="memberList"></ul>
+        <p class="me-line" id="meLine" hidden></p>
+        <div class="card who" id="whoBox" hidden>
+          <b>คุณคือใคร?</b>
+          <div class="sub" id="whoHint">แตะชื่อตัวเอง เว็บจะจำไว้ในเครื่องนี้ ถ้ายังไม่มีชื่อ พิมพ์ชื่อแล้วกดเข้าร่วม</div>
+          <div class="shares" id="whoPicks"></div>
+          <form class="inline-form" id="joinForm">
+            <input id="joinName" maxlength="30" placeholder="ชื่อเล่นของคุณ" aria-label="ชื่อเล่นของคุณ" required>
+            <button class="btn primary" type="submit" id="joinBtn">เข้าร่วมตี้</button>
+          </form>
+        </div>
+        <form class="inline-form needs-write" id="addMemberForm">
+          <input id="addName" maxlength="30" placeholder="เพิ่มชื่อเพื่อนที่ไม่ได้เปิดลิงก์" aria-label="ชื่อเพื่อน" required>
+          <button class="btn" type="submit" id="addBtn">เพิ่มเพื่อน</button>
+        </form>
+      </section>
+
+      <section class="block">
+        <div class="block-head"><h2>สั่งอะไรไปบ้าง</h2><span class="sub">แตะชื่อเพื่อเลือกว่าใครหารจานนั้น ไม่เลือกเลย = หารทุกคน</span></div>
+        <ul class="items" id="itemList"></ul>
+        <div class="card scan needs-write" id="scanBox" hidden>
+          <div class="scan-row">
+            <div><b>สแกนใบเสร็จ</b><div class="sub">ถ่ายหรือเลือกรูปใบเสร็จ ระบบจะอ่านเมนูกับราคาให้ ตรวจแล้วค่อยกดเพิ่ม</div></div>
+            <label class="btn primary" for="scanFile">ถ่าย / เลือกรูป</label>
+            <input type="file" id="scanFile" accept="image/*" hidden>
+          </div>
+          <div class="sub" id="scanStatus" hidden></div>
+          <div id="scanReview" hidden></div>
+        </div>
+        <form class="card item-form needs-write" id="itemForm">
+          <div class="grid">
+            <label class="field"><span>เมนู</span><input id="iName" maxlength="60" required placeholder="ชุดหมูรวม"></label>
+            <label class="field"><span>ราคาต่อหน่วย (บาท)</span><input id="iPrice" type="number" min="0" step="0.01" required inputmode="decimal" placeholder="299"></label>
+            <label class="field"><span>จำนวน</span><input id="iQty" type="number" min="1" step="1" value="1"></label>
+          </div>
+          <div class="shares" id="newShares"></div>
+          <div class="actions"><button class="btn primary" type="submit">เพิ่มเมนู</button></div>
+        </form>
+      </section>
+
+      <section class="block">
+        <div class="block-head"><h2>หารบิล</h2></div>
+        <div class="bill">
+          <div class="card fields">
+            <div class="toggles">
+              <label class="toggle"><input type="checkbox" id="bSvc"> <span>เซอร์วิสชาร์จ 10%</span></label>
+              <label class="toggle"><input type="checkbox" id="bVat"> <span>VAT 7% <small>(คิดหลังเซอร์วิสชาร์จ)</small></span></label>
+              <label class="toggle"><input type="checkbox" id="bRound"> <span>ปัดเศษขึ้นเป็นบาท</span></label>
+            </div>
+            <div class="disc">
+              <div class="disc-head"><span>ส่วนลด</span><button class="btn small" type="button" id="addDisc">+ เพิ่มส่วนลด</button></div>
+              <div class="disc-list" id="discList"></div>
+            </div>
+            <label class="field"><span>ใครออกเงินจ่ายร้านไปก่อน</span><select id="bPayer"></select></label>
+            <label class="field"><span>พร้อมเพย์ของคนจ่าย (ใช้สร้าง QR)</span><input id="bPP" maxlength="20" inputmode="numeric" placeholder="เบอร์โทรหรือเลขบัตรประชาชน"></label>
+            <div class="row2">
+              <label class="field"><span>ธนาคาร</span>
+                <select id="bBank">
+                  <option value="">— ไม่ระบุ —</option>
+                  <option value="kbank">กสิกรไทย</option>
+                  <option value="ktb">กรุงไทย</option>
+                  <option value="scb">ไทยพาณิชย์ (SCB)</option>
+                  <option value="bbl">กรุงเทพ</option>
+                  <option value="bay">กรุงศรี</option>
+                  <option value="ttb">ทหารไทยธนชาต (ttb)</option>
+                  <option value="gsb">ออมสิน</option>
+                </select>
+              </label>
+              <label class="field"><span>เลขบัญชี</span><input id="bAcct" maxlength="20" inputmode="numeric" placeholder="123-4-56789-0"></label>
+            </div>
+            <label class="field"><span>ชื่อบัญชี</span><input id="bAcctName" maxlength="60" placeholder="ชื่อ-นามสกุลเจ้าของบัญชี"></label>
+          </div>
+          <div class="slip" id="slip"></div>
+        </div>
+      </section>
+
+      <div class="danger-zone needs-write" id="dangerZone"></div>
+    </div>
+  </main>
+</div>
+<div id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
