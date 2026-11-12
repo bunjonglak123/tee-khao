@@ -1,0 +1,14 @@
+# Keep the deployed site to the app itself.
+test
+e2e
+docs
+scripts
+.github
+.superpowers
+server.js
+Dockerfile
+docker-compose.yml
+.dockerignore
+playwright.config.js
+vitest.config.js
+README.md
