@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tk
+          POSTGRES_PASSWORD: tk
+          POSTGRES_DB: tk
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U tk" --health-interval 2s --health-timeout 3s --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://tk:tk@localhost:5432/tk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Unit + API tests
+        run: npm test
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+      - name: E2E tests
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report
+          retention-days: 7
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: No env files tracked
+        run: |
+          if git ls-files | grep -E '(^|/)\.env'; then echo "::error::env file committed"; exit 1; fi
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    needs: [test, secrets]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Skip when Vercel is not configured
+        if: env.VERCEL_TOKEN == ''
+        run: echo "::notice::VERCEL_TOKEN not set; skipping deploy"
+      - name: Deploy real site
+        if: env.VERCEL_TOKEN != ''
+        env:
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_PROD }}
+        run: npx --yes vercel@54 deploy --prod --yes --token "$VERCEL_TOKEN"
+      - name: Deploy demo site
+        if: env.VERCEL_TOKEN != ''
+        env:
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_DEMO }}
+        run: npx --yes vercel@54 deploy --prod --yes --token "$VERCEL_TOKEN"
