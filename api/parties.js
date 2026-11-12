@@ -1,11 +1,25 @@
-import { db, ensure, handle, httpError, newId, str, num } from "./_lib.js";
+import { db, ensure, handle, httpError, isId, newId, str, num } from "./_lib.js";
+
+// GET returns only the parties the caller already knows (?ids=a,b,c).
+// Real parties are reachable by link only; nobody can browse everyone's parties.
+// The demo site (DEMO_MODE=1) holds only fake data, so it also lists everything.
+function parseIds(raw) {
+  const list = String(raw ?? "").split(",").map((x) => x.trim()).filter(isId);
+  return [...new Set(list)].slice(0, 50);
+}
 
 export default handle(async (req, res) => {
   await ensure();
   const s = db();
   if (req.method === "GET") {
-    const rows = await s`select id, data->>'title' as title, data->>'place' as place, data->>'when' as "when"
-      from teekhao.parties order by created_at desc limit 100`;
+    const ids = parseIds(req.query && req.query.ids);
+    const demo = process.env.DEMO_MODE === "1";
+    if (!ids.length && !demo) return res.status(200).json({ parties: [] });
+    const rows = demo
+      ? await s`select id, data->>'title' as title, data->>'place' as place, data->>'when' as "when"
+          from teekhao.parties order by created_at desc limit 100`
+      : await s`select id, data->>'title' as title, data->>'place' as place, data->>'when' as "when"
+          from teekhao.parties where id = any(${ids}) order by created_at desc`;
     return res.status(200).json({ parties: rows });
   }
   if (req.method !== "POST") throw httpError(405, "ใช้ GET หรือ POST เท่านั้น");

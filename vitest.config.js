@@ -5,5 +5,6 @@ export default defineConfig({
     include: ["test/**/*.test.js"],
     exclude: ["e2e/**", "node_modules/**"],
     fileParallelism: false,
+    setupFiles: ["test/setup.js"],
   },
 });

@@ -1,4 +1,5 @@
 import { computeBill, discountsOf, itemDiscOff, ppPayload } from "./lib/bill.js";
+import { knownIds, addKnown, pruneKnown } from "./lib/known.js";
 
 (() => {
   const $ = (s) => document.querySelector(s);
@@ -20,6 +21,7 @@ import { computeBill, discountsOf, itemDiscOff, ppPayload } from "./lib/bill.js"
     get(k) { try { return localStorage.getItem(k); } catch { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch {} },
   };
+  const LS = (() => { try { return window.localStorage; } catch { return null; } })();
   const newId = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), (b) => b.toString(16).padStart(2, "0")).join("");
 
   // Styles for tap-to-rename (kept with the feature).
@@ -84,17 +86,28 @@ import { computeBill, discountsOf, itemDiscOff, ppPayload } from "./lib/bill.js"
   };
 
   async function loadParties() {
-    try { parties = (await api("/api/parties")).parties || []; loaded = true; renderList(); }
+    const ids = knownIds(LS);
+    try {
+      parties = (await api("/api/parties?ids=" + encodeURIComponent(ids.join(",")))).parties || [];
+      const got = parties.map((p) => p.id);
+      // Forget parties that were deleted; keep ids added while this request was in flight.
+      pruneKnown(LS, [...got, ...knownIds(LS).filter((id) => !ids.includes(id))]);
+      loaded = true; renderList();
+    }
     catch (e) { loaded = true; renderList(e.message); }
   }
   let polling = false;
+  const remembered = new Set();
   async function poll() {
     if (polling || !pid || pending || document.hidden) return;
     polling = true;
     const id = pid;
     try {
       const st = await api(`/api/party?id=${encodeURIComponent(id)}${cur && cur.party.id === id ? "&rev=" + cur.rev : ""}`);
-      if (id === pid && !pending) setState(st);
+      if (id === pid && !pending) {
+        setState(st);
+        if (!remembered.has(id)) { remembered.add(id); addKnown(LS, id); if (!parties.some((p) => p.id === id)) loadParties(); }
+      }
     } catch (e) {
       if (e.status === 404) { toast(e.message); location.hash = ""; loadParties(); }
       else $("#net").hidden = false;
@@ -182,7 +195,7 @@ import { computeBill, discountsOf, itemDiscOff, ppPayload } from "./lib/bill.js"
     }
     const empty = $("#listEmpty");
     empty.hidden = loaded && parties.length > 0 && !err;
-    empty.textContent = err ? err : !loaded ? "กำลังโหลด…" : "ยังไม่มีตี้ กด “ตั้งตี้ใหม่” เพื่อเริ่ม";
+    empty.textContent = err ? err : !loaded ? "กำลังโหลด…" : "ยังไม่มีตี้ในเครื่องนี้ กด “ตั้งตี้ใหม่” หรือเปิดลิงก์ตี้ที่เพื่อนส่งมา";
   }
 
   // ---------- detail ----------
@@ -594,7 +607,7 @@ import { computeBill, discountsOf, itemDiscOff, ppPayload } from "./lib/bill.js"
     const btn = e.submitter; if (btn) btn.disabled = true;
     try {
       const r = await api("/api/parties", { title, nick, place: $("#cPlace").value.trim(), when: $("#cWhen").value, max: Number($("#cMax").value) || 0 });
-      store.set("tk-nick", nick); store.set("tk-me-" + r.id, r.memberId);
+      store.set("tk-nick", nick); store.set("tk-me-" + r.id, r.memberId); addKnown(LS, r.id);
       $("#createForm").reset(); $("#createForm").hidden = true;
       location.hash = "p-" + r.id;
       toast("ตั้งตี้แล้ว ส่งลิงก์หน้านี้ให้เพื่อนได้เลย");
