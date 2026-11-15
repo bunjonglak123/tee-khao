@@ -2,6 +2,7 @@
 // Used by Docker, the e2e tests and local development. Vercel does not use this file.
 import http from "node:http";
 import { readFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 
@@ -11,6 +12,9 @@ const MAX_BODY = 6 * 1024 * 1024;
 const PUBLIC = /^(index\.html|app\.js|style\.css|(lib|vendor)\/[A-Za-z0-9_-]+\.js)$/;
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8" };
 const API = /^\/api\/([a-z][a-z-]*)$/;
+// Same site-wide security headers Vercel sends, read from vercel.json so there is one source.
+const SITE_HEADERS = JSON.parse(readFileSync(path.join(ROOT, "vercel.json"), "utf8"))
+  .headers.filter((h) => h.source === "/(.*)").flatMap((h) => h.headers);
 
 function send(res, status, body, type = "application/json; charset=utf-8") {
   if (res.headersSent) return;
@@ -66,6 +70,7 @@ async function serveStatic(pathname, res) {
 
 export function createServer() {
   return http.createServer(async (req, res) => {
+    for (const h of SITE_HEADERS) res.setHeader(h.key, h.value);
     try {
       const url = new URL(req.url, "http://localhost");
       const m = API.exec(url.pathname);
