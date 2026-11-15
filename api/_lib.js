@@ -29,6 +29,12 @@ export function ensure() {
         id text not null, data jsonb not null, primary key (party_id, id))`;
       await s`create table if not exists teekhao.scans (day text primary key, n int not null default 0)`;
       await s`create table if not exists teekhao.hits (key text not null, win bigint not null, n int not null default 0, primary key (key, win))`;
+      // Extra layer: with RLS on and no policies, Supabase's anon/authenticated roles
+      // can't touch these rows even if the schema were ever exposed. The app connects
+      // as the table owner, which RLS does not restrict.
+      for (const t of ["parties", "members", "items", "scans", "hits"]) {
+        await s`alter table ${s("teekhao." + t)} enable row level security`;
+      }
     })().catch((e) => { ready = null; throw e; });
   }
   return ready;

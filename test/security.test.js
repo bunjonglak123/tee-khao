@@ -82,3 +82,13 @@ describe.skipIf(!hasDb)("rate limit", () => {
     expect((await post("8.8.8.8")).status).toBe(200);
   });
 });
+
+describe.skipIf(!hasDb)("row level security", () => {
+  it("is on for every app table, so Supabase's public API roles see nothing", async () => {
+    await ensure();
+    const rows = await db()`select c.relname, c.relrowsecurity from pg_class c
+      join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'teekhao' and c.relkind = 'r'`;
+    expect(rows.length).toBeGreaterThanOrEqual(5);
+    for (const r of rows) expect([r.relname, r.relrowsecurity]).toEqual([r.relname, true]);
+  });
+});
