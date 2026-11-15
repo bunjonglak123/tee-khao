@@ -1,4 +1,4 @@
-import { db, ensure, handle, httpError, str, num } from "./_lib.js";
+import { clientKey, db, ensure, handle, hit, httpError, str, num } from "./_lib.js";
 
 const PROMPT = `This image is a restaurant receipt, most likely from Thailand. Extract the ordered food and drink items.
 Reply with only JSON in this shape:
@@ -27,6 +27,7 @@ export default handle(async (req, res) => {
   if (!image || image.length > 4_000_000 || !/^[A-Za-z0-9+/=]+$/.test(image)) throw httpError(400, "รูปไม่ถูกต้องหรือใหญ่เกินไป");
 
   await ensure();
+  if (!(await hit(db(), "scan:" + clientKey(req), 10, 86400))) throw httpError(429, "วันนี้คุณสแกนครบ 10 ครั้งแล้ว พรุ่งนี้สแกนได้ใหม่ ระหว่างนี้จดเมนูเองได้");
   const limit = Math.round(num(process.env.SCAN_DAILY_LIMIT, 1, 10000, 40));
   const day = bangkokDay();
   const [row] = await db()`insert into teekhao.scans (day, n) values (${day}, 1)

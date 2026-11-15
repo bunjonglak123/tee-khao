@@ -7,5 +7,7 @@ export default async function () {
     await sql`create schema if not exists teekhao`;
     const [t] = await sql`select to_regclass('teekhao.parties') as t`;
     if (t.t) await sql`truncate teekhao.parties, teekhao.scans cascade`;
+    const [h] = await sql`select to_regclass('teekhao.hits') as t`;
+    if (h.t) await sql`truncate teekhao.hits`;
   } finally { await sql.end(); }
 }

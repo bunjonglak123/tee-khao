@@ -1,4 +1,4 @@
-import { db, ensure, handle, httpError, isId, newId, str, num } from "./_lib.js";
+import { clientKey, db, ensure, handle, hit, httpError, isId, newId, str, num } from "./_lib.js";
 
 // GET returns only the parties the caller already knows (?ids=a,b,c).
 // Real parties are reachable by link only; nobody can browse everyone's parties.
@@ -26,6 +26,7 @@ export default handle(async (req, res) => {
   const b = req.body || {};
   const title = str(b.title, 60), nick = str(b.nick, 30);
   if (!title || !nick) throw httpError(400, "ใส่ชื่อตี้และชื่อเล่นของคุณก่อน");
+  if (!(await hit(s, "party:" + clientKey(req), 20, 3600))) throw httpError(429, "สร้างตี้ถี่เกินไป รอสักพักแล้วลองใหม่");
   const id = newId(), mid = newId();
   const data = {
     title, place: str(b.place, 80), when: str(b.when, 20), max: Math.round(num(b.max, 0, 50)), note: "",
